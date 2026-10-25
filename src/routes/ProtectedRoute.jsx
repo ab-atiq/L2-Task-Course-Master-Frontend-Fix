@@ -8,26 +8,25 @@ export default function ProtectedRoute({ children }) {
   const token = getToken();
 
   useEffect(() => {
-    // Check if dev bypass is enabled for testing/grading protected routes
-    const isBypass = localStorage.getItem("dev_bypass") === "true" || window.location.search.includes("bypass=true");
-    if (isBypass) {
-      setIsValid(true);
-      return;
-    }
+    if (!token) return;
 
-    if (!token) {
-      setIsValid(false);
-      return;
-    }
-
-    // Verify token is valid
+    let active = true;
     getMe()
-      .then(() => setIsValid(true))
+      .then(() => {
+        if (active) setIsValid(true);
+      })
       .catch(() => {
-        // Fallback: if token exists but network/server check fails, still allow if token exists
-        setIsValid(!!token);
+        if (active) setIsValid(false);
       });
+
+    return () => {
+      active = false;
+    };
   }, [token]);
+
+  if (!token || isValid === false) {
+    return <Navigate to="/login" replace />;
+  }
 
   if (isValid === null) {
     return (
@@ -35,10 +34,6 @@ export default function ProtectedRoute({ children }) {
         <span className="loading loading-spinner loading-lg"></span>
       </div>
     );
-  }
-
-  if (!isValid) {
-    return <Navigate to="/login" replace />;
   }
 
   return children;
